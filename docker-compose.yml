@@ -9,6 +9,9 @@ services:
     ports:
       - "8222:22"
 
+    environment:
+      RABBITMQ_CONNECTION_URI: 'amqp://root:root@rabbit:5672/%2F'
+
     depends_on:
       - rabbit
       - game_worker

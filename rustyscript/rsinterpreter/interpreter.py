@@ -1267,6 +1267,7 @@ class Interpreter(NodeVisitorGenerator):
             print(msg)
 
     def visit_Program(self, node):
+        yield
         program_name = node.name
         self.log(f"ENTER: PROGRAM {program_name}")
 

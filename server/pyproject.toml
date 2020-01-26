@@ -1,16 +1,16 @@
 [tool.poetry]
-name = "rustyscript"
+name = "server"
 version = "0.1.0"
 description = ""
-authors = ["Solaris"]
+authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-pydantic = "^1.4"
-colorama = "^0.4.3"
-pika = "^1.1.0"
+prompt_toolkit = "^3.0.2"
+asyncssh = "^2.1.0"
+pygments = "^2.5.2"
+aio_pika = "^6.4.1"
 environs = "^7.1.0"
-loguru = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
 

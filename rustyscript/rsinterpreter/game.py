@@ -1,10 +1,9 @@
 import typing
 import random
-import time
-import os
 
+from colorama import Fore
 from pydantic import BaseModel
-from interpreter import (
+from .interpreter import (
     Interpreter,
     SemanticAnalyzer,
     Parser,
@@ -14,6 +13,12 @@ from interpreter import (
     SemanticError,
 )
 from abc import ABC, abstractmethod
+
+colors = {
+    "dust": Fore.LIGHTBLACK_EX,
+    "player_0": Fore.LIGHTMAGENTA_EX,
+    "default": Fore.LIGHTBLACK_EX,
+}
 
 PLAYER_POSITION: typing.List[typing.List[int]] = [[0, 0], [1, 1], [0, 1], [1, 0]]
 
@@ -29,7 +34,7 @@ class Tile:
 
     def get_char(self):
         if not self.items:
-            return ".", "default"
+            return ".", "dust"
         else:
             return self.items[0].get_char()
 
@@ -50,6 +55,7 @@ class CircusMission(Mission):
 
     game = None
     player = None
+    n_steps = 0
     step = 0
 
     player_cords = [
@@ -61,43 +67,35 @@ class CircusMission(Mission):
         [1, 2],
         [0, 2],
         [0, 1],
-        [0, 0]
+        [0, 0],
     ]
 
     def __init__(self, ast):
-        self.player = Player(ast, build=[LegsModule()])
+        build = [LegsModule()]
+        semantic_analyzer = SemanticAnalyzer({module.name: module for module in build})
+        semantic_analyzer.visit(ast)
+        self.player = Player(ast, build=build)
         self.player.init_cords(0, 0)
+        self.texts = []
         self.game = RustyScriptInterpreter(players=[self.player], field_size=3)
+
+    def get_text(self):
+        return self.texts
 
     def play(self):
         for step, _ in enumerate(self.game.turn()):
+            self.n_steps = step + 1
             if self.check():
-                time.sleep(0.5)
-                os.system("clear")
-                print(
-                    "\n".join(" ".join(e[0] for e in row) for row in self.game.get_field()) + "\n"
-                )
+                self.texts.append(self.game.get_field())
                 break
             if step == 200:
-                return {
-                    'result': 0,
-                    'description': 'You lose!'
-                }
+                self.texts.append(self.game.get_field())
+                return {"result": 0, "description": "You lose!"}
             if step % 2 == 0:
-                time.sleep(0.5)
-                os.system("clear")
-                print(
-                    "\n".join(" ".join(e[0] for e in row) for row in self.game.get_field()) + "\n"
-                )
+                self.texts.append(self.game.get_field())
         else:
-            return {
-                'result': 0,
-                'description': 'You lose!'
-            }
-        return {
-            'result': 1,
-            'description': 'You won!'
-        }
+            return {"result": 0, "description": "You lose!"}
+        return {"result": 1, "description": "You win!"}
 
     def check(self):
         if self.step == 0 and self.player.cords == self.player_cords[self.step]:
@@ -176,7 +174,10 @@ class LegsModule(RobotModule):
         ):
             self.dust()
             self.player.cords[1] -= 1
-        yield from range(2)
+            yield from range(2)
+            return 1
+        yield
+        return 0
 
     def go_down(self):
         if self.player.cords[
@@ -186,7 +187,10 @@ class LegsModule(RobotModule):
         ):
             self.dust()
             self.player.cords[1] += 1
-        yield from range(2)
+            yield from range(2)
+            return 1
+        yield
+        return 0
 
     def go_left(self):
         if self.player.cords[0] - 1 >= 0 and self.player.game.is_empty(
@@ -194,7 +198,10 @@ class LegsModule(RobotModule):
         ):
             self.dust()
             self.player.cords[0] -= 1
-        yield from range(2)
+            yield from range(2)
+            return 1
+        yield
+        return 0
 
     def go_right(self):
         if self.player.cords[
@@ -204,7 +211,10 @@ class LegsModule(RobotModule):
         ):
             self.dust()
             self.player.cords[0] += 1
-        yield from range(2)
+            yield from range(2)
+            return 1
+        yield
+        return 0
 
     def dust(self):
         if random.randint(0, 3) != 0:
@@ -237,9 +247,11 @@ class Player:
 
 class RustyScriptInterpreter:
     def __init__(
-            self, players: typing.List[Player],
-            field_size: int = 7, field: typing.List[typing.List[Tile]] = None,
-            step_per_turn: int = 10
+        self,
+        players: typing.List[Player],
+        field_size: int = 7,
+        field: typing.List[typing.List[Tile]] = None,
+        step_per_turn: int = 10,
     ):
         self.step_per_turn = step_per_turn
         self.field = field or [
@@ -282,8 +294,6 @@ class RustyScriptInterpreter:
                     if step == 10:
                         break
 
-
-
     def add_particle(self, x, y, particle):
         if x < 0 or x >= self.field_size or y < 0 or y >= self.field_size:
             return
@@ -302,23 +312,7 @@ class RustyScriptInterpreter:
 
 
 if __name__ == "__main__":
-    text = """
-    program Test;
-    use legs;
-    var x: integer;
-    begin
-        right();
-        right();
-        down();
-        down();
-        left();
-        right();
-        left();
-        left();
-        up();
-        up();
-    end.
-    """
+    text = open("prog.pas").read()
 
     lexer = Lexer(text)
     try:
@@ -336,4 +330,8 @@ if __name__ == "__main__":
         print(e.message)
         exit(1)
 
-    print(CircusMission(tree).play())
+    result = CircusMission(tree).play()
+    if result["result"]:
+        print(Fore.LIGHTGREEN_EX + result["description"] + Fore.RESET)
+    else:
+        print(Fore.LIGHTRED_EX + result["description"] + Fore.RESET)
