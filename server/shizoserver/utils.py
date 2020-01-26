@@ -101,8 +101,8 @@ async def eval_code(mission: str, code: str):
             if event is not None:
                 break
             await asyncio.sleep(0.5)
-
         data = json.loads(event.body.decode('utf-8'))
+    await connection.close()
     return data
 
 
