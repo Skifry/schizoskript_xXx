@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  server:
+    build:
+      context: server/
+      dockerfile: Dockerfile
+    command: 'python main.py'
+    ports:
+      - "8222:22"
+
+    depends_on:
+      - rabbit
+      - game_worker
+
+  game_worker:
+    build:
+      context: rustyscript/
+      dockerfile: Dockerfile
+    environment:
+      N_WORKERS: 3
+      RABBITMQ_CONNECTION_URI: 'amqp://root:root@rabbit:5672/%2F'
+    command: 'python main.py'
+
+    depends_on:
+      - rabbit
+
+  rabbit:
+    image: rabbitmq:3.8.2
+    environment:
+      RABBITMQ_DEFAULT_USER: root
+      RABBITMQ_DEFAULT_PASS: root
+
+    ports:
+      - 5672:5672
